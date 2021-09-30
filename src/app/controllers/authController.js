@@ -55,7 +55,7 @@ router.post("/authenticate", async ( req, res) => {
 });   
 
 router.post("/forgot_password", async (req, res) => {
-    const {email} = req.body;
+    const { email } = req.body;
 
     try {
         const user = await User.findOne({ email });
@@ -73,32 +73,63 @@ router.post("/forgot_password", async (req, res) => {
                 passwordResetToken: token,
                 passwordResetExpires: now,
             }
-
+            
         });
+        
 
         mailer.sendMail({
             to: email,
-            from: "ath33@rockandroll.com.br",
-            template:"auth/forgot_password",
+            from: 'hinata00.hinata00@hotmail.com',
+            template:'auth/forgot_password',
             context: { token },
 
         }, (err) => {
+            
             if(err)
-               return res.status(400).send({ error: "Cannot send forgot password email" }); 
-
-
+                return res.status(400).send({ error: "Cannot send forgot password email" });
+                
+            
             return res.send();
-        
+            
         })
-    
-
+        
     } catch (err) {
-        console.log(err);
+        
         res.status(400).send({error : "Error on forgot password, try again"});
     }
    
 });
 
+router.post("/reset_password", async (req, res) => {
+    const { email, token, password} = req.body;
 
+    try {
+        const user = await User.findOne({ email })
+          .select('+passwordResetToken passwordResetExpires')
+    
+        if(!user)
+            return res.status(400).send({ error: "User not found" });
+        
+        
+        if(token !== user.passwordResetToken)
+            return res.status(400).send({ error: "Token invalid" });
+ 
+        const now = new Date();
+        
+        if(now > user.passwordResetExpires)
+            return res.status(400).send({ error: "Token expired, generate a new one" });
+
+        user.password = password;
+
+        await user.save();
+
+        res.send();
+
+    } catch {
+       
+        return res.status(400).send({ error: "cannot reset password, try again" });
+
+    }
+});
 
 module.exports = app => app.use("/auth", router);
